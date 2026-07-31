@@ -29,34 +29,20 @@ for cmd in epsonscan2; do
     command -v "$cmd" &>/dev/null || die "$cmd not found on PATH"
 done
 
-scan_flatbed() {
-    $EPSONSCAN2 --scan $SCANNER_IP Flatbed.SF2
-}
-
-scan_adf() {
-    $EPSONSCAN2 --scan $SCANNER_IP ADF.SF2
-}
-
 FILENAME="scan_$(date +%Y-%m-%d_%H-%M-%S).pdf"
 
 # Update config files with the current values from .env
-cp SF2.template ADF.SF2
-cp SF2.template Flatbed.SF2
-sed -i "s#RESOLUTION_VAR#$RESOLUTION#g" ADF.SF2
-sed -i "s#RESOLUTION_VAR#$RESOLUTION#g" Flatbed.SF2
-sed -i "s#TMP_SCAN_PATH_VAR#$TMP_SCAN_PATH#g" ADF.SF2
-sed -i "s#TMP_SCAN_PATH_VAR#$TMP_SCAN_PATH#g" Flatbed.SF2
-sed -i "s#BACKGROUND_COLOR_VAR#3#g" ADF.SF2
-sed -i "s#BACKGROUND_COLOR_VAR#0#g" Flatbed.SF2
-sed -i "s#FUNCTIONAL_UNIT_VAR#1#g" ADF.SF2
-sed -i "s#FUNCTIONAL_UNIT_VAR#0#g" Flatbed.SF2
+cp SF2.template PaperlessScan.SF2
+sed -i "s#RESOLUTION_VAR#$RESOLUTION#g" PaperlessScan.SF2
+sed -i "s#TMP_SCAN_PATH_VAR#$TMP_SCAN_PATH#g" PaperlessScan.SF2
+sed -i "s#BACKGROUND_COLOR_VAR#3#g" PaperlessScan.SF2
 
 # If the file already exists, delete it so a new scan can be created
 if [[ -f "${TMP_SCAN_PATH}/Scan.pdf" ]]; then
     rm -f "${TMP_SCAN_PATH}/Scan.pdf"
 fi
 
-scan_adf || scan_flatbed
+$EPSONSCAN2 --scan $SCANNER_IP PaperlessScan.SF2
 
 mv "${TMP_SCAN_PATH}/Scan.pdf" "${OUTPUT_DIR}/${FILENAME}"
 

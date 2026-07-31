@@ -88,10 +88,10 @@
                         "int": 101
                     },
                     "FunctionalUnit": {
-                        "int": FUNCTIONAL_UNIT_VAR
+                        "int": 1
                     },
                     "FunctionalUnit_Auto": {
-                        "int": 0
+                        "int": 1
                     },
                     "Gamma": {
                         "int": 22
