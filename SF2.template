@@ -25,7 +25,7 @@
                         "int": 0
                     },
                     "BackgroundColor": {
-                        "int": 0
+                        "int": BACKGROUND_COLOR_VAR
                     },
                     "BackgroundRemoval": {
                         "int": 0
@@ -88,7 +88,7 @@
                         "int": 101
                     },
                     "FunctionalUnit": {
-                        "int": 0
+                        "int": FUNCTIONAL_UNIT_VAR
                     },
                     "FunctionalUnit_Auto": {
                         "int": 0
@@ -151,7 +151,7 @@
                         "int": 0
                     },
                     "Resolution": {
-                        "int": 300
+                        "int": RESOLUTION_VAR
                     },
                     "ScanAreaHeight": {
                         "int": 3507
@@ -172,7 +172,7 @@
                         "int": 1
                     },
                     "UserDefinePath": {
-                        "string": "/run/user/1000/doc/9333e655/PaperlessScan"
+                        "string": "TMP_SCAN_PATH_VAR"
                     },
                     "UserScanAreaHeight": {
                         "int": 0

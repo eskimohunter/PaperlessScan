@@ -37,18 +37,28 @@ scan_adf() {
     $EPSONSCAN2 --scan $SCANNER_IP ADF.SF2
 }
 
-# --- Configuration ---
 FILENAME="scan_$(date +%Y-%m-%d_%H-%M-%S).pdf"
-SCAN_PATH="/run/user/1000/doc/9333e655/PaperlessScan/Scan.pdf"
+
+# Update config files with the current values from .env
+cp SF2.template ADF.SF2
+cp SF2.template Flatbed.SF2
+sed -i "s#RESOLUTION_VAR#$RESOLUTION#g" ADF.SF2
+sed -i "s#RESOLUTION_VAR#$RESOLUTION#g" Flatbed.SF2
+sed -i "s#TMP_SCAN_PATH_VAR#$TMP_SCAN_PATH#g" ADF.SF2
+sed -i "s#TMP_SCAN_PATH_VAR#$TMP_SCAN_PATH#g" Flatbed.SF2
+sed -i "s#BACKGROUND_COLOR_VAR#3#g" ADF.SF2
+sed -i "s#BACKGROUND_COLOR_VAR#0#g" Flatbed.SF2
+sed -i "s#FUNCTIONAL_UNIT_VAR#1#g" ADF.SF2
+sed -i "s#FUNCTIONAL_UNIT_VAR#0#g" Flatbed.SF2
 
 # If the file already exists, delete it so a new scan can be created
-if [[ -f "${SCAN_PATH}" ]]; then
-    rm -f "${SCAN_PATH}"
+if [[ -f "${TMP_SCAN_PATH}/Scan.pdf" ]]; then
+    rm -f "${TMP_SCAN_PATH}/Scan.pdf"
 fi
 
 scan_adf || scan_flatbed
 
-mv "${SCAN_PATH}" "${OUTPUT_DIR}/${FILENAME}"
+mv "${TMP_SCAN_PATH}/Scan.pdf" "${OUTPUT_DIR}/${FILENAME}"
 
 # --- Upload Document ---
 curl -s -X POST \
