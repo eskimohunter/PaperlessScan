@@ -45,3 +45,11 @@ Output: `OUTPUT_DIR/scan_YYYY-MM-DD_HH-MM-SS.pdf`
 | `OUTPUT_DIR` | *(required)* | Directory to save PDFs (auto-created) |
 | `RESOLUTION` | `300` | Scan DPI |
 | `MODE` | `Color` | `Color` or `Gray` |
+
+## New approach
+
+flatpak run net.epson.epsonscan2 --scan 192.168.4.34 DefaultSettings.SF2
+
+### ToDo
+
+- 

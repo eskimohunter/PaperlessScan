@@ -85,7 +85,7 @@
                         "int": 3
                     },
                     "Folder": {
-                        "int": 0
+                        "int": 101
                     },
                     "FunctionalUnit": {
                         "int": 1
@@ -172,7 +172,7 @@
                         "int": 1
                     },
                     "UserDefinePath": {
-                        "string": ""
+                        "string": "/run/user/1000/doc/9333e655/PaperlessScan"
                     },
                     "UserScanAreaHeight": {
                         "int": 0

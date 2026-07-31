@@ -15,36 +15,44 @@ set -a
 source "$ENV_FILE"
 set +a
 
-: "${SCANNER_DEVICE:?SCANNER_DEVICE is not set in .env}"
+: "${SCANNER_IP:?SCANNER_IP is not set in .env}"
 : "${OUTPUT_DIR:?OUTPUT_DIR is not set in .env}"
+: "${EPSONSCAN2:?EPSONSCAN2 is not set in .env}"
 
 RESOLUTION="${RESOLUTION:-300}"
 MODE="${MODE:-Color}"
+SOURCE="${SOURCE:-Auto}"
 
-if ! command -v scanimage &>/dev/null; then
-    echo "ERROR: scanimage not found on PATH" >&2
-    exit 1
-fi
+die() { echo "ERROR: $*" >&2; exit 1; }
 
-if ! command -v img2pdf &>/dev/null; then
-    echo "ERROR: img2pdf not found on PATH" >&2
-    exit 1
-fi
+for cmd in epsonscan2; do
+    command -v "$cmd" &>/dev/null || die "$cmd not found on PATH"
+done
 
+scan_flatbed() {
+    $EPSONSCAN2 --scan $SCANNER_IP Flatbed.SF2
+}
+
+scan_adf() {
+    $EPSONSCAN2 --scan $SCANNER_IP ADF.SF2
+}
+
+# --- Configuration ---
 FILENAME="scan_$(date +%Y-%m-%d_%H-%M-%S).pdf"
+SCAN_PATH="/run/user/1000/doc/9333e655/PaperlessScan/Scan.pdf"
 
-mkdir -p "$OUTPUT_DIR"
-
-scanimage \
-    --device "$SCANNER_DEVICE" \
-    --resolution "$RESOLUTION" \
-    --mode "$MODE" \
-    --format=tiff \
-    | img2pdf --output "$OUTPUT_DIR/$FILENAME" -
-
-if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
-    echo "ERROR: scan failed" >&2
-    exit 1
+# If the file already exists, delete it so a new scan can be created
+if [[ -f "${SCAN_PATH}" ]]; then
+    rm -f "${SCAN_PATH}"
 fi
 
-echo "$OUTPUT_DIR/$FILENAME"
+scan_adf || scan_flatbed
+
+mv "${SCAN_PATH}" "${OUTPUT_DIR}/${FILENAME}"
+
+# --- Upload Document ---
+curl -s -X POST \
+  -H "Authorization: Token ${API_TOKEN}" \
+  -H "Accept: application/json; version=9" \
+  -F "document=@${OUTPUT_DIR}/${FILENAME}" \
+  "${PAPERLESS_URL}/api/documents/post_document/"
