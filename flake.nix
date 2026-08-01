@@ -14,9 +14,7 @@
   in {
     devShells.${system}.default = pkgs.mkShell {
       buildInputs = with nixpkgs.legacyPackages.x86_64-linux; [
-        # sane-backends
         epsonscan2
-        # img2pdf
         shellcheck
       ];
     };
