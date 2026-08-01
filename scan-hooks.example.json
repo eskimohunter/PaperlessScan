@@ -1,0 +1,21 @@
+[
+  {
+    "id": "scan",
+    "execute-command": "/home/user/PaperlessScan/scan.sh",
+    "command-working-directory": "/home/user/PaperlessScan",
+    "pass-environment-to-command": [
+      { "source": "string", "envname": "PATH", "name": "/home/user/.nix-profile/bin:/run/wrappers/bin:/run/current-system/sw/bin" },
+      { "source": "string", "envname": "HOME", "name": "/home/user" }
+    ],
+    "trigger-rule": {
+      "match": {
+        "type": "value",
+        "value": "WEBHOOK_TOKEN_PLACEHOLDER",
+        "parameter": {
+          "source": "url",
+          "name": "token"
+        }
+      }
+    }
+  }
+]

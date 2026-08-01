@@ -15,6 +15,7 @@
     devShells.${system}.default = pkgs.mkShell {
       buildInputs = with nixpkgs.legacyPackages.x86_64-linux; [
         epsonscan2
+        webhook
         shellcheck
       ];
     };

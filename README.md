@@ -14,7 +14,7 @@ One-click scanning from an Epson network scanner to PDF, with automatic upload t
 
 ## NixOS / Nix
 
-A dev shell is provided via `flake.nix` with `epsonscan2` and `shellcheck`:
+A dev shell is provided via `flake.nix` with `epsonscan2`, `webhook`, and `shellcheck`:
 
 ```bash
 nix develop
@@ -33,10 +33,10 @@ nix develop
    | Variable | Description |
    |---|---|
    | `SCANNER_IP` | IP address of your Epson scanner (e.g. `192.168.1.50`) |
-   | `OUTPUT_DIR` | Directory where scanned PDFs are saved |
-   | `TMP_SCAN_PATH` | Temporary directory for the scan output |
    | `RESOLUTION` | Scan resolution in DPI (default: `300`) |
    | `BACKGROUND_COLOR` | Scanner background colour (`0`=White, `3`=Black; default: `3`) |
+   | `OUTPUT_DIR` | Directory where scanned PDFs are saved |
+   | `TMP_SCAN_PATH` | Temporary directory for the scan output |
    | `EPSONSCAN2` | Command to invoke `epsonscan2` (e.g. `flatpak run net.epson.epsonscan2`) |
    | `PAPERLESS_URL` | Paperless-ngx URL, no trailing slash |
    | `API_TOKEN` | API token from Paperless Web UI → Profile → circular arrow button |
@@ -55,6 +55,40 @@ The script will:
 4. Save the PDF to `OUTPUT_DIR` with a timestamped filename
 5. Upload the document to Paperless-ngx
 
+## Webhook
+
+A scan can also be triggered remotely via HTTP using [webhook](https://github.com/adnanh/webhook).
+
+**Setup:**
+
+1. Copy the hooks template and set a secret token:
+
+   ```bash
+   cp scan-hooks.example.json scan-hooks.json
+   ```
+
+2. Edit `scan-hooks.json` — replace `WEBHOOK_TOKEN_PLACEHOLDER` with your own secret and update paths to match your system.
+
+3. Run the webhook server:
+
+   ```bash
+   webhook -hooks scan-hooks.json -ip 127.0.0.1 -port 9000 -verbose
+   ```
+
+   Or install as a systemd user service:
+
+   ```bash
+   cp scan-webhook.service ~/.config/systemd/user/
+   systemctl --user daemon-reload
+   systemctl --user enable --now scan-webhook
+   ```
+
+**Trigger a scan:**
+
+```bash
+curl "http://127.0.0.1:9000/hooks/scan?token=YOUR_SECRET"
+```
+
 ## Scanner Settings
 
 The `SF2.template` file configures the scanner with these defaults:
@@ -65,4 +99,5 @@ The `SF2.template` file configures the scanner with these defaults:
 - **Feed:** Auto (flatbed or ADF)
 - **Paper deskew:** Enabled
 - **Double-feed detection:** Enabled
+- **Background color:** Black (configurable via `BACKGROUND_COLOR`)
 - **Duplex:** Disabled

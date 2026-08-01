@@ -1,0 +1,13 @@
+[Unit]
+Description=PaperlessScan Webhook
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/.nix-profile/bin/webhook -hooks %h/Documents/RobsDocuments/git/PaperlessScan/scan-hooks.json -ip 127.0.0.1 -port 9000 -verbose
+Restart=on-failure
+RestartSec=5
+WorkingDirectory=%h/Documents/RobsDocuments/git/PaperlessScan
+
+[Install]
+WantedBy=default.target

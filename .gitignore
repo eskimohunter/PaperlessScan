@@ -2,3 +2,4 @@
 result
 .direnv
 *.SF2
+scan-hooks.json
