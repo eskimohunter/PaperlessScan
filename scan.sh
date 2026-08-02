@@ -20,6 +20,9 @@ set +a
 : "${TMP_SCAN_PATH:?TMP_SCAN_PATH is not set in .env}"
 : "${EPSONSCAN2:?EPSONSCAN2 is not set in .env}"
 
+mkdir -p "$OUTPUT_DIR"
+mkdir -p "$TMP_SCAN_PATH"
+
 RESOLUTION="${RESOLUTION:-300}"
 BACKGROUND_COLOR="${BACKGROUND_COLOR:-3}"
 
@@ -39,8 +42,6 @@ sed -i "s#BACKGROUND_COLOR_VAR#$BACKGROUND_COLOR#g" "$SCRIPT_DIR/PaperlessScan.S
 if [[ -f "${TMP_SCAN_PATH}/Scan.pdf" ]]; then
     rm -f "${TMP_SCAN_PATH}/Scan.pdf"
 fi
-
-mkdir -p "$OUTPUT_DIR"
 
 echo "Scanning..."
 $EPSONSCAN2 --scan "$SCANNER_IP" "$SCRIPT_DIR/PaperlessScan.SF2"
