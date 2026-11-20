@@ -23,14 +23,14 @@ nix develop            # optional dev shell: epsonscan2, webhook, shellcheck
 
 - Gitignored: `.env`, `scan-hooks.json`, `*.SF2`. Tracked templates: `.env.example`, `scan-hooks.example.json` (placeholder `WEBHOOK_TOKEN_PLACEHOLDER`).
 - The local `scan-hooks.json` and `scan-webhook.service` still point at a third checkout path `/home/robert/Documents/RobsDocuments/git/PaperlessScan` — fix both when editing.
-- Deployed copies on `paperlessscan` are locally modified (apt `webhook` path, `/home/paperless/...` paths); preserve those edits when syncing from this repo.
+- The host clone at `/root/PaperlessScan` is unmodified from GitHub; create its `.env` manually (gitignored) rather than syncing a local one.
 
 ## Deployment host: `paperlessscan`
 
-- Separate clone at `/home/paperless/Documents/PaperlessScan`, user `paperless` (uid 1001), origin `eskimohunter/PaperlessScan.git`, branch `master`. Ubuntu 24.04 LXC, LAN `192.168.4.25`, Tailscale `100.83.71.86`. `ssh root@paperlessscan` works; `ssh paperlessscan` lands as robert (sudo needs a password).
-- Host has apt `epsonscan2` 6.7.80, `webhook` 2.8.0, TigerVNC/XFCE — **no nix, flatpak, or shellcheck**. Working `.env` there: `EPSONSCAN2=epsonscan2`, `TMP_SCAN_PATH=/tmp/PaperlessScan`, `OUTPUT_DIR=/home/paperless/Documents/scans`. Never copy the local Flatpak paths to the host.
-- Scanner IP is `192.168.4.152` (old `192.168.4.34` is stale); both local and host `.env` now use it. The device is Bonjour `EPSON099C8A.local` / IPv6 `fe80::fa25:51ff:fe09:9c8a` (model ES025A, WF-2930). Re-discover with `avahi-browse -art | grep -i epson` + `avahi-resolve -4 -n <name>.local`.
-- On the host, `runuser -u paperless -- epsonscan2 --set-ip 192.168.4.152` makes scanning work, even if `epsonscan2 --list` still says `Device is not found...`. Verified 2026-11-20: `scan.sh` as user `paperless` produced a PDF in `~/Documents/scans` and upload returned HTTP 200 (Paperless consumed it as doc id 19, later 20/21).
-- Local Nix scanning also works after fixing `flake.nix`: it must override `epsonscan2` with `withNonFreePlugins = true` (otherwise `es2netif` is missing, ENOENT) and export OpenSSL 1.1's `lib` dir via `shellHook` (otherwise `es2netif` cannot `dlopen libcrypto.so.1.1`, skips TLS, and fails with `Unable to send data`, exit 26). Both were verified; plain `nix develop && ./scan.sh` now produces a PDF.
-- Paperless-ngx is on a different host `paperless` (Debian 13, `192.168.4.82:8000`), reached at `https://paperless.dusky-paradise.ts.net`; deployed token verified (200 on `/api/documents/`).
-- Webhook is **not running**: user unit has no lingering manager, VNC is disabled, and the system `webhook.service` is dead (no `/etc/webhook.conf`); port 9000 unbound. Scanning is headless CLI — VNC is unrelated (see untracked `docs/vnc-setup.md`).
+- Fresh Ubuntu 24.04 LXC (rebuilt 2026-11-20), root-only (`ssh root@paperlessscan`; no `robert` user). LAN `192.168.4.156`, Tailscale `100.97.230.109`. Keep the root disk at least ~6 GB — 2 GB fails Nix builds with ENOSPC.
+- Nix 2.36 is installed multi-user with `nix-command` + `flakes`, and **`sandbox = false`** in `/etc/nix/nix.conf`. The sandbox must be off in this unprivileged LXC, otherwise builds fail with `/dev/null: Permission denied`.
+- Host `.env` uses `SCANNER_IP=192.168.4.152`, `EPSONSCAN2=epsonscan2`, `TMP_SCAN_PATH=/tmp/PaperlessScan`, `OUTPUT_DIR=/root/Documents/scans`. The first `nix develop` builds the non-free `epsonscan2` variant (not in the binary cache) and takes several minutes.
+- Scanning is verified via Nix: `nix develop --command epsonscan2 --set-ip 192.168.4.152`, then `nix develop --command ./scan.sh`. On 2026-11-20 this produced a PDF in `/root/Documents/scans`, upload returned HTTP 200, and Paperless created document id 22. `--set-ip` is required even though `epsonscan2 --list` may still report `Device is not found...`.
+- Scanner is `192.168.4.152` (old `192.168.4.34` is stale; Bonjour `EPSON099C8A.local`, model ES025A / WF-2930). Discover with `avahi-browse -art | grep -i epson` + `avahi-resolve -4 -n <name>.local`.
+- Paperless-ngx is on a different host `paperless` (Debian 13, `192.168.4.82:8000`), reached at `https://paperless.dusky-paradise.ts.net`; the deployed token works.
+- Webhook is not set up on the fresh host yet: no `scan-webhook.service`, nothing listening on port 9000. Scanning is headless CLI.
