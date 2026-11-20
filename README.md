@@ -83,6 +83,15 @@ A scan can also be triggered remotely via HTTP using [webhook](https://github.co
    systemctl --user enable --now scan-webhook
    ```
 
+   For a headless host, `deploy/` contains a root system unit and a wrapper that serializes overlapping triggers. Adjust the paths and Tailscale IP in the unit first:
+
+   ```bash
+   install -m755 deploy/paperlessscan-scan /usr/local/bin/
+   install -m644 deploy/scan-webhook.service /etc/systemd/system/
+   systemctl daemon-reload
+   systemctl enable --now scan-webhook
+   ```
+
 **Trigger a scan:**
 
 ```bash

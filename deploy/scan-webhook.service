@@ -1,0 +1,23 @@
+# System unit for the paperlessscan host (webhook exposed on the Tailscale IP).
+# Install as /etc/systemd/system/scan-webhook.service.
+#
+# Adjust these host-specific values before use:
+#   - /root/PaperlessScan  (repo checkout)
+#   - 100.97.230.109      (this host's Tailscale IP)
+[Unit]
+Description=PaperlessScan Webhook
+After=network-online.target tailscaled.service
+Wants=network-online.target tailscaled.service
+
+[Service]
+Type=simple
+User=root
+Environment=HOME=/root
+Environment=PATH=/root/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/root/.nix-profile/bin/webhook -hooks /root/PaperlessScan/scan-hooks.json -ip 100.97.230.109 -port 9000 -verbose
+WorkingDirectory=/root/PaperlessScan
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
