@@ -8,4 +8,4 @@ cd /root/PaperlessScan
 exec 9>/run/paperlessscan-scan.lock
 flock -n 9 || { echo "scan already in progress; trigger ignored" >&2; exit 0; }
 
-exec /nix/var/nix/profiles/default/bin/nix develop --command ./scan.sh
+exec /nix/var/nix/profiles/default/bin/nix develop --command ./scan.sh "$@"

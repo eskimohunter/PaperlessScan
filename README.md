@@ -7,12 +7,13 @@ One-click scanning from an Epson network scanner to PDF, with automatic upload t
 - An Epson network scanner reachable over mDNS
 - `avahi-daemon` and `avahi-utils` for scanner discovery
 - `epsonscan2` (Epson Scan 2) — provided by the Nix dev shell below, or install it via apt/Flatpak
+- `qpdf` for multi-page session merges (provided by the Nix dev shell)
 - `curl`
 - A running [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx) instance with an API token
 
 ## NixOS / Nix
 
-A dev shell is provided via `flake.nix` with `epsonscan2` (including the non-free network plugins), `avahi`, `webhook`, and `shellcheck`:
+A dev shell is provided via `flake.nix` with `epsonscan2` (including the non-free network plugins), `avahi`, `qpdf`, `webhook`, and `shellcheck`:
 
 ```bash
 nix develop
@@ -42,18 +43,33 @@ nix develop
 
 ## Usage
 
+`./scan.sh` scans one batch. `./scan.sh next` starts or extends a scan session.
+
+### One-shot
+
 ```bash
 ./scan.sh
 ```
 
-The script will:
+The script discovers the scanner by model/MAC over mDNS, scans one batch, saves it to `OUTPUT_DIR`, and uploads it to Paperless.
 
-1. Load configuration from `.env`
-2. Discover the scanner's current IP by model (and optional MAC) via mDNS
-3. Generate an Epson Scan 2 settings file from `SF2.template`
-4. Trigger a scan on the network scanner
-5. Save the PDF to `OUTPUT_DIR` with a timestamped filename
-6. Upload the document to Paperless-ngx
+### Scan sessions
+
+Use `next` for a long press (start or continue a session), and a normal run for a short press (scan the final batch and finish):
+
+```bash
+./scan.sh next   # start session, scan batch 1
+./scan.sh next   # append batch 2
+./scan.sh        # scan final batch, merge, upload
+```
+
+Merging rules:
+
+- **1 batch** → uploaded as-is
+- **2 batches** → interleaved as duplex (long-edge flip: fronts `1..N`, backs `N..1`)
+- **3+ batches** → concatenated in order
+
+This supports manual duplex on a simplex ADF (long press for fronts, flip, short press for backs), single-sheet front/back on the flatbed, and multi-load simplex documents. Sessions expire after 10 minutes of inactivity (`SESSION_TIMEOUT`).
 
 ## Webhook
 
@@ -94,9 +110,14 @@ A scan can also be triggered remotely via HTTP using [webhook](https://github.co
 
 **Trigger a scan:**
 
+The `scan` hook is the short-press action (one-shot, or finish a session); `scan-next` is the long-press action (start or extend a session):
+
 ```bash
 curl "http://127.0.0.1:9000/hooks/scan?token=YOUR_SECRET"
+curl "http://127.0.0.1:9000/hooks/scan-next?token=YOUR_SECRET"
 ```
+
+For a ZHA button, bind its short-press event to `scan` and its long-press event to `scan-next`.
 
 ## Scanner Settings
 

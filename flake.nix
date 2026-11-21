@@ -21,6 +21,7 @@
         (pkgs.epsonscan2.override { withNonFreePlugins = true; })
         pkgs.openssl_1_1
         pkgs.avahi
+        pkgs.qpdf
         pkgs.webhook
         pkgs.shellcheck
       ];
