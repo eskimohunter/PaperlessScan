@@ -135,14 +135,64 @@ if [[ ! -d "$RUNTIME_DIR" || ! -w "$RUNTIME_DIR" ]]; then
 fi
 SESSION_DIR="$RUNTIME_DIR/paperlessscan-session"
 SESSION_STATE="$SESSION_DIR/state"
+CACHE_DIR="$RUNTIME_DIR/paperlessscan"
+CACHE_FILE="$CACHE_DIR/scanner"
 started_at=0
 last_activity=0
 batch_count=0
+SCANNER_IP=""
+
+cache_write() {
+    local ip="$1"
+    mkdir -p "$CACHE_DIR"
+    printf 'model=%s\nmac=%s\nip=%s\n' \
+        "$SCANNER_MODEL" "${SCANNER_MAC:-}" "$ip" >"$CACHE_FILE.tmp"
+    mv "$CACHE_FILE.tmp" "$CACHE_FILE"
+}
+
+cache_read() {
+    [[ -f "$CACHE_FILE" ]] || return 1
+    local c_model c_mac c_ip
+    c_model=$(sed -n 's/^model=//p' "$CACHE_FILE" | head -n 1)
+    c_mac=$(sed -n 's/^mac=//p' "$CACHE_FILE" | head -n 1)
+    c_ip=$(sed -n 's/^ip=//p' "$CACHE_FILE" | head -n 1)
+    [[ "$c_model" == "$SCANNER_MODEL" && "$c_mac" == "${SCANNER_MAC:-}" && -n "$c_ip" ]] || return 1
+    printf '%s\n' "$c_ip"
+}
+
+cache_invalidate() {
+    rm -f "$CACHE_FILE"
+}
+
+resolve_scanner() {
+    local ip
+    if ip=$(cache_read); then
+        echo "Using cached scanner: $ip" >&2
+        printf '%s\n' "$ip"
+        return 0
+    fi
+    ip=$(discover_scanner "$SCANNER_MODEL" "${SCANNER_MAC:-}")
+    cache_write "$ip"
+    printf '%s\n' "$ip"
+}
+
+resolve_scanner_force() {
+    local ip
+    ip=$(discover_scanner "$SCANNER_MODEL" "${SCANNER_MAC:-}")
+    cache_write "$ip"
+    printf '%s\n' "$ip"
+}
 
 # Remove the generated settings file on any exit, including failures.
 trap 'rm -f "$SCRIPT_DIR/PaperlessScan.SF2"' EXIT
 
-SCANNER_IP="$(discover_scanner "$SCANNER_MODEL" "${SCANNER_MAC:-}")"
+if [[ "$MODE" == "resolve" ]]; then
+    SCANNER_IP="$(resolve_scanner_force)"
+    echo "Scanner cached at ${SCANNER_IP}" >&2
+    exit 0
+fi
+
+SCANNER_IP="$(resolve_scanner)"
 
 scan_batch() {
     local out="$1"
@@ -155,9 +205,11 @@ scan_batch() {
     rm -f "${TMP_SCAN_PATH}/Scan.pdf"
 
     echo "Scanning..."
-    if ! $EPSONSCAN2 --scan "$SCANNER_IP" "$SCRIPT_DIR/PaperlessScan.SF2"; then
+    local rc=0
+    $EPSONSCAN2 --scan "$SCANNER_IP" "$SCRIPT_DIR/PaperlessScan.SF2" || rc=$?
+    if ((rc != 0)); then
         rm -f "${TMP_SCAN_PATH}/Scan.pdf" "$out"
-        return 1
+        return "$rc"
     fi
     if [[ ! -f "${TMP_SCAN_PATH}/Scan.pdf" ]]; then
         echo "ERROR: scanner produced no output" >&2
@@ -165,6 +217,32 @@ scan_batch() {
     fi
     mv "${TMP_SCAN_PATH}/Scan.pdf" "$out"
     echo "Saved: $out"
+}
+
+# A stale cached IP shows up as exit 26 (unable to send data) or 34 (device not
+# found). Invalidate the cache, rediscover, and retry the batch once.
+scan_batch_with_retry() {
+    local out="$1" ip rc=0
+    scan_batch "$out" || rc=$?
+    if ((rc == 0)); then
+        return 0
+    fi
+    if [[ "$rc" -ne 26 && "$rc" -ne 34 ]]; then
+        return "$rc"
+    fi
+
+    echo "Scanner connection failed (rc=$rc); rediscovering..." >&2
+    cache_invalidate
+    if ! ip=$(discover_scanner "$SCANNER_MODEL" "${SCANNER_MAC:-}"); then
+        echo "ERROR: scanner rediscovery failed" >&2
+        return "$rc"
+    fi
+    cache_write "$ip"
+    SCANNER_IP="$ip"
+    echo "Retrying scan with ${SCANNER_IP}..." >&2
+    rc=0
+    scan_batch "$out" || rc=$?
+    return "$rc"
 }
 
 upload_pdf() {
@@ -270,7 +348,7 @@ session_add() {
     local next=$((count + 1))
     local out="$SESSION_DIR/batch$next.pdf"
     mkdir -p "$SESSION_DIR"
-    if ! scan_batch "$out"; then
+    if ! scan_batch_with_retry "$out"; then
         echo "ERROR: scan failed; session unchanged." >&2
         return 1
     fi
@@ -286,7 +364,7 @@ session_finish() {
         local filename out
         filename="scan_$(date +%Y-%m-%d_%H-%M-%S).pdf"
         out="$OUTPUT_DIR/$filename"
-        scan_batch "$out" || die "scan failed"
+        scan_batch_with_retry "$out" || die "scan failed"
         upload_pdf "$out" || die "upload failed; saved at $out"
         return 0
     fi
@@ -296,7 +374,7 @@ session_finish() {
     count="$batch_count"
     local next=$((count + 1))
     local final="$SESSION_DIR/batch$next.pdf"
-    if ! scan_batch "$final"; then
+    if ! scan_batch_with_retry "$final"; then
         echo "ERROR: final scan failed; session unchanged." >&2
         return 1
     fi

@@ -3,7 +3,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
 
-  outputs = { self, nixpkgs }: 
+  outputs = { self, nixpkgs }:
   let
     system = "x86_64-linux"; # update to your system
     pkgs = import nixpkgs {
@@ -14,11 +14,36 @@
         permittedInsecurePackages = [ "openssl-1.1.1w" ];
       };
     };
+
+    epsonscan2 = pkgs.epsonscan2.override { withNonFreePlugins = true; };
+
+    # Preloaded runtime used by the systemd webhook: no `nix develop` per scan.
+    paperlessscan = pkgs.writeShellApplication {
+      name = "paperlessscan";
+      runtimeInputs = [
+        epsonscan2
+        pkgs.avahi
+        pkgs.qpdf
+        pkgs.curl
+        pkgs.which
+        pkgs.bash
+        pkgs.coreutils
+        pkgs.gnused
+        pkgs.gawk
+        pkgs.gnugrep
+      ];
+      text = ''
+        # es2netif dlopen()s libcrypto.so.1.1 for the scanner's TLS link.
+        export LD_LIBRARY_PATH="${pkgs.openssl_1_1.out}/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+        cd "''${PAPERLESSSCAN_DIR:-/root/PaperlessScan}"
+        exec ./scan.sh "$@"
+      '';
+    };
   in {
     devShells.${system}.default = pkgs.mkShell {
       buildInputs = [
         # Network scanning (es2netif) ships in the optional non-free plugin bundle.
-        (pkgs.epsonscan2.override { withNonFreePlugins = true; })
+        epsonscan2
         pkgs.openssl_1_1
         pkgs.avahi
         pkgs.qpdf
@@ -31,5 +56,7 @@
         export LD_LIBRARY_PATH="${pkgs.openssl_1_1.out}/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
       '';
     };
+
+    packages.${system}.default = paperlessscan;
   };
 }

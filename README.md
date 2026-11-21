@@ -108,6 +108,14 @@ A scan can also be triggered remotely via HTTP using [webhook](https://github.co
    systemctl enable --now scan-webhook
    ```
 
+   The unit resolves the scanner and caches its address at startup. Install the preloaded runtime to avoid `nix develop` on every scan (the wrapper uses it automatically when present):
+
+   ```bash
+   nix profile install /root/PaperlessScan#
+   ```
+
+   If the cached address goes stale, a scan failure (exit 26/34) triggers rediscovery and one retry.
+
 **Trigger a scan:**
 
 The `scan` hook is the short-press action (one-shot, or finish a session); `scan-next` is the long-press action (start or extend a session):

@@ -6,14 +6,17 @@
 #   - 100.97.230.109      (this host's Tailscale IP)
 [Unit]
 Description=PaperlessScan Webhook
-After=network-online.target tailscaled.service
-Wants=network-online.target tailscaled.service
+After=network-online.target tailscaled.service avahi-daemon.service
+Wants=network-online.target tailscaled.service avahi-daemon.service
 
 [Service]
 Type=simple
 User=root
 Environment=HOME=/root
 Environment=PATH=/root/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Best-effort discovery so the first scan uses the cached address. A scanner
+# that is off at boot does not block the webhook from starting.
+ExecStartPre=-/usr/local/bin/paperlessscan-scan resolve
 ExecStart=/root/.nix-profile/bin/webhook -hooks /root/PaperlessScan/scan-hooks.json -ip 100.97.230.109 -port 9000 -verbose
 WorkingDirectory=/root/PaperlessScan
 Restart=on-failure

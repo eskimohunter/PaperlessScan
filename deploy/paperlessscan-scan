@@ -2,10 +2,16 @@
 # Webhook entrypoint used on the paperlessscan host.
 # Install as /usr/local/bin/paperlessscan-scan.
 set -euo pipefail
-cd /root/PaperlessScan
 
 # Serialize scans: drop overlapping webhook triggers while one is running.
 exec 9>/run/paperlessscan-scan.lock
 flock -n 9 || { echo "scan already in progress; trigger ignored" >&2; exit 0; }
 
+# Prefer the preloaded profile wrapper (installed with `nix profile install .#`).
+if [[ -x /root/.nix-profile/bin/paperlessscan ]]; then
+    exec /root/.nix-profile/bin/paperlessscan "$@"
+fi
+
+# Fallback for hosts without the profile package.
+cd /root/PaperlessScan
 exec /nix/var/nix/profiles/default/bin/nix develop --command ./scan.sh "$@"
