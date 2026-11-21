@@ -4,17 +4,15 @@ One-click scanning from an Epson network scanner to PDF, with automatic upload t
 
 ## Requirements
 
-- An Epson network scanner accessible on your LAN
-- `epsonscan2` (Epson Scan 2) — installed via Flatpak:
-  ```bash
-  flatpak install net.epson.epsonscan2
-  ```
+- An Epson network scanner reachable over mDNS
+- `avahi-daemon` and `avahi-utils` for scanner discovery
+- `epsonscan2` (Epson Scan 2) — provided by the Nix dev shell below, or install it via apt/Flatpak
 - `curl`
 - A running [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx) instance with an API token
 
 ## NixOS / Nix
 
-A dev shell is provided via `flake.nix` with `epsonscan2`, `webhook`, and `shellcheck`:
+A dev shell is provided via `flake.nix` with `epsonscan2` (including the non-free network plugins), `avahi`, `webhook`, and `shellcheck`:
 
 ```bash
 nix develop
@@ -32,12 +30,13 @@ nix develop
 
    | Variable | Description |
    |---|---|
-   | `SCANNER_IP` | IP address of your Epson scanner (e.g. `192.168.1.50`) |
+   | `SCANNER_MODEL` | Model name/number advertised via mDNS, case-insensitive substring (e.g. `WF-2930`) |
+   | `SCANNER_MAC` | Optional MAC address to select one of several same-model scanners |
    | `RESOLUTION` | Scan resolution in DPI (default: `300`) |
    | `BACKGROUND_COLOR` | Scanner background colour (`0`=White, `3`=Black; default: `3`) |
    | `OUTPUT_DIR` | Directory where scanned PDFs are saved |
    | `TMP_SCAN_PATH` | Temporary directory for the scan output |
-   | `EPSONSCAN2` | Command to invoke `epsonscan2` (e.g. `flatpak run net.epson.epsonscan2`) |
+   | `EPSONSCAN2` | Command to invoke `epsonscan2` (e.g. `epsonscan2` from the dev shell, or `flatpak run net.epson.epsonscan2`) |
    | `PAPERLESS_URL` | Paperless-ngx URL, no trailing slash |
    | `API_TOKEN` | API token from Paperless Web UI → Profile → circular arrow button |
 
@@ -50,10 +49,11 @@ nix develop
 The script will:
 
 1. Load configuration from `.env`
-2. Generate an Epson Scan 2 settings file from `SF2.template`
-3. Trigger a scan on the network scanner
-4. Save the PDF to `OUTPUT_DIR` with a timestamped filename
-5. Upload the document to Paperless-ngx
+2. Discover the scanner's current IP by model (and optional MAC) via mDNS
+3. Generate an Epson Scan 2 settings file from `SF2.template`
+4. Trigger a scan on the network scanner
+5. Save the PDF to `OUTPUT_DIR` with a timestamped filename
+6. Upload the document to Paperless-ngx
 
 ## Webhook
 

@@ -20,6 +20,7 @@
         # Network scanning (es2netif) ships in the optional non-free plugin bundle.
         (pkgs.epsonscan2.override { withNonFreePlugins = true; })
         pkgs.openssl_1_1
+        pkgs.avahi
         pkgs.webhook
         pkgs.shellcheck
       ];
