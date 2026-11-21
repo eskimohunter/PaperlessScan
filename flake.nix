@@ -25,6 +25,7 @@
         pkgs.avahi
         pkgs.qpdf
         pkgs.curl
+        pkgs.jq
         pkgs.which
         pkgs.bash
         pkgs.coreutils
@@ -47,6 +48,7 @@
         pkgs.openssl_1_1
         pkgs.avahi
         pkgs.qpdf
+        pkgs.jq
         pkgs.webhook
         pkgs.shellcheck
       ];

@@ -40,6 +40,7 @@ nix develop
    | `EPSONSCAN2` | Command to invoke `epsonscan2` (e.g. `epsonscan2` from the dev shell, or `flatpak run net.epson.epsonscan2`) |
    | `PAPERLESS_URL` | Paperless-ngx URL, no trailing slash |
    | `API_TOKEN` | API token from Paperless Web UI → Profile → circular arrow button |
+   | `PAPERLESS_TAG` | Optional tag applied to every upload (created if missing); empty disables tagging |
 
 ## Usage
 

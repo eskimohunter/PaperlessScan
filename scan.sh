@@ -121,6 +121,7 @@ discover_scanner() {
 SCAN_CMD="${EPSONSCAN2%% *}"
 command -v "$SCAN_CMD" &>/dev/null || die "$SCAN_CMD not found on PATH"
 command -v qpdf &>/dev/null || die "qpdf not found (install it or use the Nix dev shell)"
+command -v jq &>/dev/null || die "jq not found (install it or use the Nix dev shell)"
 
 mkdir -p "$OUTPUT_DIR"
 mkdir -p "$TMP_SCAN_PATH"
@@ -245,18 +246,57 @@ scan_batch_with_retry() {
     return "$rc"
 }
 
+# Look up a Paperless tag by name (case-insensitive), creating it if needed.
+resolve_tag_id() {
+    local name="$1" encoded id created
+    encoded=$(jq -rn --arg v "$name" '$v|@uri')
+    id=$(curl -sS -m 20 \
+        -H "Authorization: Token ${API_TOKEN}" \
+        -H "Accept: application/json; version=9" \
+        "${PAPERLESS_URL}/api/tags/?name__iexact=${encoded}" |
+        jq -r '.results[0].id // empty')
+    if [[ -n "$id" ]]; then
+        printf '%s\n' "$id"
+        return 0
+    fi
+
+    echo "Tag '${name}' not found; creating it." >&2
+    created=$(curl -sS -m 20 -X POST \
+        -H "Authorization: Token ${API_TOKEN}" \
+        -H "Accept: application/json; version=9" \
+        -H "Content-Type: application/json" \
+        --data "$(jq -cn --arg n "$name" '{name:$n}')" \
+        "${PAPERLESS_URL}/api/tags/")
+    id=$(printf '%s' "$created" | jq -r '.id // empty')
+    if [[ -z "$id" ]]; then
+        echo "ERROR: could not create tag '${name}': ${created}" >&2
+        return 1
+    fi
+    printf '%s\n' "$id"
+}
+
 upload_pdf() {
     local file="$1"
     if [[ -z "${PAPERLESS_URL:-}" || -z "${API_TOKEN:-}" ]]; then
         echo "Paperless upload skipped (PAPERLESS_URL or API_TOKEN not set)"
         return 0
     fi
+
+    local tag_id=""
+    if [[ -n "${PAPERLESS_TAG:-}" ]]; then
+        tag_id=$(resolve_tag_id "$PAPERLESS_TAG") || return 1
+        echo "Using tag: ${PAPERLESS_TAG} (id ${tag_id})"
+    fi
+
     echo "Uploading to Paperless..."
+    local -a form=(-F "document=@${file}")
+    [[ -n "$tag_id" ]] && form+=(-F "tags=${tag_id}")
+
     local http
     if ! http=$(curl -sS -w "%{http_code}" -o /dev/null -X POST \
         -H "Authorization: Token ${API_TOKEN}" \
         -H "Accept: application/json; version=9" \
-        -F "document=@${file}" \
+        "${form[@]}" \
         "${PAPERLESS_URL}/api/documents/post_document/"); then
         echo "ERROR: Paperless upload request failed" >&2
         return 1
